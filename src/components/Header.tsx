@@ -41,8 +41,7 @@ export const Header: React.FC<HeaderProps> = ({
           <img src="/raijin-logo.png" alt="RAIJIN Logo" className="brand-logo" />
         </div>
         <div className="brand-subtext">
-          <span className="kanji-badge">雷神</span>
-          <span className="brand-tagline">Low-Latency Virtual Drum Instrument</span>
+          <span className="brand-tagline">Virtual Drum Instrument</span>
         </div>
       </div>
 
@@ -53,7 +52,7 @@ export const Header: React.FC<HeaderProps> = ({
           <span className="status-dot" />
           <span className="status-text">
             {cameraStatus === 'active'
-              ? 'Camera Live'
+              ? 'Camera Active'
               : cameraStatus === 'requesting'
               ? 'Starting Camera...'
               : cameraStatus === 'denied'
@@ -77,9 +76,8 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           onClick={onToggleSingleDrumMode}
           className={`action-btn ${singleDrumMode ? 'btn-selected' : ''}`}
-          title="Toggle between Solo Snare (Phase 1 Baseline) and Full 8-Piece Kit"
+          title="Toggle between Solo Snare and Full 8-Piece Kit"
         >
-          <span className="action-kanji">太鼓</span>
           <span>{singleDrumMode ? 'Solo Snare' : '8-Piece Kit'}</span>
         </button>
 
@@ -90,7 +88,7 @@ export const Header: React.FC<HeaderProps> = ({
           title="Metronome / Practice Mode"
         >
           <Music size={15} />
-          <span>拍子</span>
+          <span>Metronome</span>
         </button>
 
         {/* Calibration Mode */}
@@ -100,7 +98,7 @@ export const Header: React.FC<HeaderProps> = ({
           title="Calibration Guides"
         >
           <Sliders size={15} />
-          <span>校正</span>
+          <span>Calibration</span>
         </button>
 
         {/* Diagnostics Toggle */}
@@ -110,7 +108,7 @@ export const Header: React.FC<HeaderProps> = ({
           title="Toggle Real-Time Diagnostics & Latency Metrics"
         >
           <Activity size={15} />
-          <span>計測</span>
+          <span>Diagnostics</span>
         </button>
 
         {/* Audio Mute/Unmute */}
@@ -130,12 +128,12 @@ export const Header: React.FC<HeaderProps> = ({
           {cameraStatus === 'active' ? (
             <>
               <CameraOff size={15} />
-              <span>停止 Stop</span>
+              <span>Stop Camera</span>
             </>
           ) : (
             <>
               <Camera size={15} />
-              <span>起動 Start</span>
+              <span>Start Camera</span>
             </>
           )}
         </button>

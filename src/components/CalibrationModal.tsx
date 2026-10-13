@@ -18,7 +18,7 @@ export const CalibrationModal: React.FC<CalibrationModalProps> = ({
         <div className="modal-header">
           <div className="modal-title">
             <Crosshair size={18} className="text-vermilion" />
-            <h3>校正設定 Calibration & Setup Guide</h3>
+            <h3>Calibration & Setup Guide</h3>
           </div>
           <button onClick={onClose} className="close-btn">
             <X size={16} />
@@ -31,7 +31,7 @@ export const CalibrationModal: React.FC<CalibrationModalProps> = ({
               1
             </div>
             <div className="step-content">
-              <h4>Hand Presence Check</h4>
+              <h4>Hand Tracking Check</h4>
               <p>Position yourself so both hands and wrists are clearly visible to the camera.</p>
               <span className={`step-status ${activeHandsCount > 0 ? 'text-green' : 'text-slate'}`}>
                 {activeHandsCount > 0
@@ -47,7 +47,7 @@ export const CalibrationModal: React.FC<CalibrationModalProps> = ({
               <h4>Downward Strike Technique</h4>
               <p>
                 Strike drums with a decisive downward motion (<ArrowDown size={12} className="inline-icon" />).
-                Horizontal waves or slow hovering do not trigger sounds to prevent false triggers.
+                The engine registers leading fingertips or hands crossing into virtual pads.
               </p>
             </div>
           </div>
@@ -55,11 +55,10 @@ export const CalibrationModal: React.FC<CalibrationModalProps> = ({
           <div className="step-item">
             <div className="step-badge">3</div>
             <div className="step-content">
-              <h4>Reach & Position Calibration</h4>
+              <h4>Reachable Area & Sensitivity</h4>
               <p>
-                The virtual drums are positioned around your natural arm reach. You can switch to the
-                <strong>凝縮 Compact</strong> layout if your camera is placed close, or
-                <strong>反転 Left-Handed</strong> if you lead with your left hand.
+                If hits feel too hard to trigger, increase <strong>Sensitivity</strong> in the bottom bar.
+                You can also switch to <strong>Compact</strong> layout for smaller arm movements.
               </p>
             </div>
           </div>
@@ -69,8 +68,8 @@ export const CalibrationModal: React.FC<CalibrationModalProps> = ({
               4
             </div>
             <div className="step-content">
-              <h4>Test Strike Test</h4>
-              <p>Try striking the central Snare or Kick in front of you.</p>
+              <h4>Live Drum Test</h4>
+              <p>Strike the central Snare or Kick drum in front of you.</p>
               <span className={`step-status ${totalHits > 0 ? 'text-green' : 'text-slate'}`}>
                 {totalHits > 0 ? `✓ ${totalHits} hit(s) successfully registered!` : 'Strike a drum to test audio.'}
               </span>
@@ -81,7 +80,7 @@ export const CalibrationModal: React.FC<CalibrationModalProps> = ({
         <div className="modal-footer">
           <button onClick={onClose} className="confirm-btn">
             <CheckCircle size={15} />
-            <span>完了 Done & Start Playing</span>
+            <span>Done & Start Playing</span>
           </button>
         </div>
       </div>

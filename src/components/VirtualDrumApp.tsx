@@ -10,13 +10,14 @@ import { audioEngine } from '../audio/AudioEngine';
 import { HitDetector } from '../engine/HitDetector';
 import { canvasRenderer } from '../rendering/CanvasRenderer';
 import { performanceTracker } from '../diagnostics/PerformanceTracker';
-import { STANDARD_KIT, MIRRORED_KIT, COMPACT_KIT } from '../drums/drumPresets';
+import { STANDARD_KIT, MIRRORED_KIT, COMPACT_KIT, isPointInsideDrum } from '../drums/drumPresets';
 import { DrumPad, PerformanceMetrics } from '../types';
-import { AlertCircle, Camera, PlayCircle } from 'lucide-react';
+import { AlertCircle, Camera, PlayCircle, Disc3 } from 'lucide-react';
 
 export const VirtualDrumApp: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
   const animationFrameId = useRef<number | null>(null);
 
   // App UI State
@@ -26,8 +27,8 @@ export const VirtualDrumApp: React.FC = () => {
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [layout, setLayout] = useState<'standard' | 'mirrored' | 'compact'>('standard');
   const [singleDrumMode, setSingleDrumMode] = useState<boolean>(false);
-  const [sensitivity, setSensitivity] = useState<number>(1.0);
-  const [masterVolume, setMasterVolume] = useState<number>(0.85);
+  const [sensitivity, setSensitivity] = useState<number>(1.2); // Default to generous 1.2 sensitivity
+  const [masterVolume, setMasterVolume] = useState<number>(0.9);
   const [predictiveMode, setPredictiveMode] = useState<boolean>(false);
   const [isMirroredView, setIsMirroredView] = useState<boolean>(true);
   const [showDiagnostics, setShowDiagnostics] = useState<boolean>(false);
@@ -53,7 +54,9 @@ export const VirtualDrumApp: React.FC = () => {
 
   // Hit detector engine instance
   const hitDetectorRef = useRef<HitDetector>(new HitDetector({
-    velocitySensitivity: 1.0,
+    minDownwardVelocity: 0.28,
+    rearmCooldownMs: 75,
+    velocitySensitivity: 1.2,
     predictiveMode: false
   }));
 
@@ -64,14 +67,13 @@ export const VirtualDrumApp: React.FC = () => {
     else if (layout === 'compact') kit = COMPACT_KIT;
 
     if (singleDrumMode) {
-      // Phase 1 Baseline: Solo Snare positioned centrally
       const snare = kit.find((d) => d.id === 'snare') || kit[0];
       return [{
         ...snare,
         x: 0.5,
         y: 0.65,
-        radiusX: 0.16,
-        radiusY: 0.14
+        radiusX: 0.17,
+        radiusY: 0.15
       }];
     }
     return kit;
@@ -99,6 +101,7 @@ export const VirtualDrumApp: React.FC = () => {
   const ensureAudioInitialized = useCallback(async () => {
     try {
       await audioEngine.initialize();
+      await audioEngine.resume();
       setIsAudioReady(true);
     } catch (err) {
       console.warn('Audio context initialization error:', err);
@@ -136,6 +139,34 @@ export const VirtualDrumApp: React.FC = () => {
       setCameraError(cameraManager.getErrorMessage() || error.message);
     }
   }, [cameraStatus, ensureAudioInitialized]);
+
+  // Click-to-play direct test trigger
+  const handleStageClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    ensureAudioInitialized();
+
+    if (!viewportRef.current) return;
+    const rect = viewportRef.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+
+    const drums = getActiveDrums();
+    for (const drum of drums) {
+      if (isPointInsideDrum({ x, y }, drum)) {
+        audioEngine.trigger(drum.id, 0.9);
+        canvasRenderer.registerHit({
+          drumId: drum.id,
+          handId: 'mouse_click',
+          handedness: 'Right',
+          timestamp: performance.now(),
+          strikePoint: { x, y },
+          velocity: 0.9,
+          rawDownwardVelocity: 1.0
+        });
+        performanceTracker.recordHit(performance.now());
+        break;
+      }
+    }
+  }, [ensureAudioInitialized, getActiveDrums]);
 
   // Master Real-Time Animation Loop
   useEffect(() => {
@@ -210,11 +241,11 @@ export const VirtualDrumApp: React.FC = () => {
     };
   }, [cameraStatus, isMirroredView, calibrationMode, getActiveDrums, activeHandsCount]);
 
-  // Adjust canvas resolution to parent container
+  // Synchronize canvas resolution with viewport element
   useEffect(() => {
     const handleResize = () => {
-      if (canvasRef.current && videoRef.current) {
-        const rect = videoRef.current.getBoundingClientRect();
+      if (canvasRef.current && viewportRef.current) {
+        const rect = viewportRef.current.getBoundingClientRect();
         if (rect.width > 0 && rect.height > 0) {
           canvasRef.current.width = rect.width;
           canvasRef.current.height = rect.height;
@@ -223,8 +254,7 @@ export const VirtualDrumApp: React.FC = () => {
     };
 
     window.addEventListener('resize', handleResize);
-    // Initial check
-    const timer = setTimeout(handleResize, 100);
+    const timer = setTimeout(handleResize, 150);
     return () => {
       window.removeEventListener('resize', handleResize);
       clearTimeout(timer);
@@ -252,8 +282,12 @@ export const VirtualDrumApp: React.FC = () => {
 
       {/* Main Playable Stage */}
       <main className="stage-container">
-        <div className="viewport-wrapper">
-          {/* Webcam Video (Mirrored if configured) */}
+        <div
+          ref={viewportRef}
+          className="viewport-wrapper"
+          onClick={handleStageClick}
+        >
+          {/* Webcam Video Feed */}
           <video
             ref={videoRef}
             className={`webcam-feed ${isMirroredView ? 'mirrored' : ''}`}
@@ -268,11 +302,13 @@ export const VirtualDrumApp: React.FC = () => {
           {cameraStatus !== 'active' && (
             <div className="camera-standby-overlay">
               <div className="standby-card">
-                <div className="standby-crest">雷</div>
+                <div className="standby-icon-wrapper">
+                  <Disc3 size={36} className="text-vermilion" />
+                </div>
                 <h2>RAIJIN VIRTUAL DRUM INSTRUMENT</h2>
                 <p>
-                  Experience zero-latency camera drumming powered by browser Web Audio DSP and
-                  real-time hand tracking.
+                  Play virtual drums with your webcam using browser Web Audio DSP and
+                  real-time hand motion tracking.
                 </p>
 
                 {cameraError ? (
@@ -282,21 +318,33 @@ export const VirtualDrumApp: React.FC = () => {
                   </div>
                 ) : (
                   <div className="permission-note">
-                    Camera frames are processed 100% locally in your browser. No video is ever uploaded.
+                    Camera frames are processed 100% locally in your browser. No video is ever recorded or uploaded.
                   </div>
                 )}
 
-                <button onClick={handleToggleCamera} className="start-experience-btn">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleCamera();
+                  }}
+                  className="start-experience-btn"
+                >
                   <Camera size={18} />
-                  <span>カメラを起動 Start Camera & Play</span>
+                  <span>Start Camera & Play</span>
                 </button>
               </div>
             </div>
           )}
 
-          {/* Unmute/Initialize Audio Overlay prompt if audio not yet active */}
+          {/* Audio initialization reminder if needed */}
           {!isAudioReady && cameraStatus === 'active' && (
-            <button className="audio-unlock-pill" onClick={ensureAudioInitialized}>
+            <button
+              className="audio-unlock-pill"
+              onClick={(e) => {
+                e.stopPropagation();
+                ensureAudioInitialized();
+              }}
+            >
               <PlayCircle size={15} />
               <span>Click anywhere to activate Web Audio</span>
             </button>

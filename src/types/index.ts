@@ -1,21 +1,13 @@
 // RAIJIN Virtual Drumming Instrument Type Definitions
 
 export interface Point2D {
-  x: number; // Normalized 0..1 (screen space, mirrored or unmirrored)
+  x: number; // Normalized 0..1 (screen space)
   y: number; // Normalized 0..1 (0 = top, 1 = bottom)
 }
 
 export interface Point3D extends Point2D {
   z: number; // Relative depth from wrist estimated by MediaPipe
 }
-
-export type LandmarkIndex =
-  | 'wrist'
-  | 'thumb_cmc' | 'thumb_mcp' | 'thumb_ip' | 'thumb_tip'
-  | 'index_mcp' | 'index_pip' | 'index_dip' | 'index_tip'
-  | 'middle_mcp' | 'middle_pip' | 'middle_dip' | 'middle_tip'
-  | 'ring_mcp' | 'ring_pip' | 'ring_dip' | 'ring_tip'
-  | 'pinky_mcp' | 'pinky_pip' | 'pinky_dip' | 'pinky_tip';
 
 export interface HandLandmarks {
   wrist: Point3D;
@@ -31,12 +23,12 @@ export interface HandLandmarks {
 export type Handedness = 'Left' | 'Right';
 
 export interface HandObservation {
-  id: string; // Persistent hand identifier ('left' or 'right')
+  id: string; // Persistent hand identifier ('hand_left' or 'hand_right')
   handedness: Handedness;
   confidence: number;
   timestamp: number; // High-resolution performance.now()
   landmarks: HandLandmarks;
-  strikePoint: Point2D; // Virtual drumming point (typically index tip or palm-wrist mid-strike point)
+  strikePoint: Point2D; // Virtual drumming point (fingertip / strike contact point)
 }
 
 export interface MotionState {
@@ -52,8 +44,8 @@ export type HitDetectorState = 'IDLE' | 'APPROACHING' | 'HIT' | 'REARMING';
 export interface HandTrackerState {
   observation: HandObservation;
   motion: MotionState;
-  detectorState: Record<string, HitDetectorState>; // DrumId -> HitState
-  lastHitTimestamps: Record<string, number>; // DrumId -> timestamp
+  detectorState: Record<string, HitDetectorState>;
+  lastHitTimestamps: Record<string, number>;
   previousPositions: Array<{ point: Point2D; timestamp: number }>;
 }
 
@@ -70,7 +62,7 @@ export type DrumType =
 export interface DrumPad {
   id: DrumType;
   name: string;
-  japaneseName: string;
+  label: string; // Short uppercase label for drum surface (e.g. 'SNARE', 'KICK')
   x: number; // Center X (0..1)
   y: number; // Center Y (0..1)
   radiusX: number; // Horizontal half-width (0..1)
@@ -94,13 +86,13 @@ export interface HitEvent {
 }
 
 export interface DetectorConfig {
-  minDownwardVelocity: number; // e.g. 0.8 screen units/sec
-  rearmCooldownMs: number; // min time between hits on the same drum (e.g. 70ms)
-  approachThreshold: number; // Distance above surface to enter APPROACHING (e.g. 0.08)
+  minDownwardVelocity: number; // Normalized screen units per second
+  rearmCooldownMs: number; // Min time between hits on the same drum (ms)
+  approachThreshold: number; // Distance above surface to enter APPROACHING
   hysteresisOffset: number; // Extra margin for exiting drum boundary
-  velocitySensitivity: number; // Sensitivity scale factor (0.5 to 2.0)
+  velocitySensitivity: number; // Sensitivity scale factor (0.5 to 2.5)
   predictiveMode: boolean; // Enable lookahead collision
-  predictionLeadTimeMs: number; // e.g. 15ms lead prediction
+  predictionLeadTimeMs: number; // Prediction lead time (ms)
 }
 
 export interface PerformanceMetrics {

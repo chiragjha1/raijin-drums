@@ -20,7 +20,7 @@ export const DiagnosticsPanel: React.FC<DiagnosticsPanelProps> = ({
         <div className="diag-header">
           <div className="diag-title">
             <Activity size={18} className="text-vermilion" />
-            <h3>実時間計測 Diagnostics & Latency Metrics</h3>
+            <h3>Diagnostics & Latency Metrics</h3>
           </div>
           <button onClick={onClose} className="close-btn" title="Close Panel">
             <X size={16} />
@@ -108,8 +108,8 @@ export const DiagnosticsPanel: React.FC<DiagnosticsPanelProps> = ({
               </span>
             </div>
             <div className="metric-row">
-              <span className="metric-label">False Trigger Guard</span>
-              <span className="metric-val val-good">Active (Vector & Cooldown)</span>
+              <span className="metric-label">Surface Crossing Guard</span>
+              <span className="metric-val val-good">Active (Anti-Tunneling)</span>
             </div>
           </div>
         </div>
@@ -119,7 +119,7 @@ export const DiagnosticsPanel: React.FC<DiagnosticsPanelProps> = ({
           <h4>Hand Detector States (FSM)</h4>
           <div className="fsm-tags">
             {Object.entries(metrics.detectorStates).length === 0 ? (
-              <span className="fsm-empty">No active hand interactions yet. Bring hands in view.</span>
+              <span className="fsm-empty">No active hand interactions yet. Bring hands into view.</span>
             ) : (
               Object.entries(metrics.detectorStates).map(([key, state]) => (
                 <div key={key} className={`fsm-pill state-${state.toLowerCase()}`}>

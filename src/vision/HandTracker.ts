@@ -158,11 +158,14 @@ export class HandTracker {
         raw: mappedRaw
       };
 
-      // Strike point: weighted combination of index and middle fingertip
-      // This represents the primary physical contact tip when drumming
+      // Strike point: leading fingertip (index or middle, whichever extends furthest down)
+      const leadTip = handLandmarks.indexTip.y >= handLandmarks.middleTip.y
+        ? handLandmarks.indexTip
+        : handLandmarks.middleTip;
+
       const strikePoint: Point2D = {
-        x: (handLandmarks.indexTip.x * 0.7 + handLandmarks.middleTip.x * 0.3),
-        y: (handLandmarks.indexTip.y * 0.7 + handLandmarks.middleTip.y * 0.3)
+        x: leadTip.x,
+        y: leadTip.y
       };
 
       // Hand Identity Continuity:

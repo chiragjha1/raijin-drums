@@ -56,20 +56,35 @@ describe('Integration Pipeline', () => {
     expect(hitsReceived).toEqual(['snare']);
 
     // 2. Strike crash cymbal with other hand
+    const crashPt = { x: crash.x, y: crash.y, z: 0 };
     const obsCrash1: HandObservation = {
       id: 'left_hand',
       handedness: 'Left',
       confidence: 0.9,
       timestamp: 250,
       strikePoint: { x: crash.x, y: crash.y - 0.2 },
-      landmarks: obsSnare1.landmarks
+      landmarks: {
+        wrist: crashPt,
+        indexTip: { x: crash.x, y: crash.y - 0.2, z: 0 },
+        middleTip: { x: crash.x, y: crash.y - 0.2, z: 0 },
+        ringTip: crashPt,
+        pinkyTip: crashPt,
+        thumbTip: crashPt,
+        indexMcp: crashPt,
+        raw: []
+      }
     };
     detector.process([obsCrash1], STANDARD_KIT, 250);
 
     const obsCrash2: HandObservation = {
       ...obsCrash1,
       timestamp: 290,
-      strikePoint: { x: crash.x, y: crash.y }
+      strikePoint: { x: crash.x, y: crash.y },
+      landmarks: {
+        ...obsCrash1.landmarks,
+        indexTip: crashPt,
+        middleTip: crashPt
+      }
     };
     const hits2 = detector.process([obsCrash2], STANDARD_KIT, 290);
     hits2.forEach((h) => mockAudioEngine.trigger(h.drumId));

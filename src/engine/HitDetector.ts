@@ -5,16 +5,17 @@ import {
   HitEvent,
   HitDetectorState,
   DetectorConfig,
-  DrumType
+  DrumType,
+  Point2D
 } from '../types';
 import { isPointInsideDrum, getEllipticalDistance } from '../drums/drumPresets';
 import { MotionEstimator } from '../tracking/MotionEstimator';
 
 export const DEFAULT_DETECTOR_CONFIG: DetectorConfig = {
-  minDownwardVelocity: 0.65, // Normalized screen units per second
-  rearmCooldownMs: 80, // Minimum interval between hits on same drum
-  approachThreshold: 0.12, // Distance above drum surface to trigger APPROACHING state
-  hysteresisOffset: 0.03, // Extra margin required to exit drum and re-arm
+  minDownwardVelocity: 0.28, // Responsive normalized screen units per second
+  rearmCooldownMs: 75, // Minimum interval between hits on same drum (ms)
+  approachThreshold: 0.15, // Distance above drum surface to trigger APPROACHING state
+  hysteresisOffset: 0.04, // Extra margin required to exit drum and re-arm
   velocitySensitivity: 1.0,
   predictiveMode: false,
   predictionLeadTimeMs: 15
@@ -33,6 +34,9 @@ export class HitDetector {
   // HandId -> Last hit timestamp
   private handLastHitTimes: Map<string, number> = new Map();
 
+  // HandId -> Previous strike point
+  private previousStrikePoints: Map<string, Point2D> = new Map();
+
   constructor(config: Partial<DetectorConfig> = {}) {
     this.config = { ...DEFAULT_DETECTOR_CONFIG, ...config };
   }
@@ -50,11 +54,12 @@ export class HitDetector {
     this.handDrumStates.clear();
     this.drumLastHitTimes.clear();
     this.handLastHitTimes.clear();
+    this.previousStrikePoints.clear();
   }
 
   /**
    * Process a list of hand observations and drum surfaces, emitting valid HitEvents.
-   * Zero frame delay: hits trigger on the exact frame the strike criteria are satisfied.
+   * Hits trigger on the exact frame the strike criteria are satisfied.
    */
   public process(
     observations: HandObservation[],
@@ -69,6 +74,7 @@ export class HitDetector {
       if (!activeHandIds.has(handId)) {
         this.estimators.delete(handId);
         this.handDrumStates.delete(handId);
+        this.previousStrikePoints.delete(handId);
       }
     }
 
@@ -80,6 +86,7 @@ export class HitDetector {
       }
 
       const motion = estimator.update(obs.strikePoint, timestamp);
+      const prevPoint = this.previousStrikePoints.get(obs.id);
 
       let handStates = this.handDrumStates.get(obs.id);
       if (!handStates) {
@@ -87,12 +94,29 @@ export class HitDetector {
         this.handDrumStates.set(obs.id, handStates);
       }
 
+      // Check contact points (primary strike point, index fingertip, middle fingertip)
+      const candidatePoints: Point2D[] = [obs.strikePoint];
+      if (obs.landmarks && obs.landmarks.indexTip) {
+        candidatePoints.push({ x: obs.landmarks.indexTip.x, y: obs.landmarks.indexTip.y });
+      }
+      if (obs.landmarks && obs.landmarks.middleTip) {
+        candidatePoints.push({ x: obs.landmarks.middleTip.x, y: obs.landmarks.middleTip.y });
+      }
+
       for (const drum of drums) {
         const currentState = handStates.get(drum.id) || 'IDLE';
 
-        // Evaluate distance and geometric collision
-        const dist = getEllipticalDistance(obs.strikePoint, drum);
-        const insideNow = dist <= 1.0;
+        // Check if any candidate fingertip/strike point is inside drum
+        let insideNow = false;
+        let minCandidateDist = Infinity;
+        for (const pt of candidatePoints) {
+          const d = getEllipticalDistance(pt, drum);
+          if (d < minCandidateDist) minCandidateDist = d;
+          if (d <= 1.0) {
+            insideNow = true;
+          }
+        }
+
         const insideHysteresis = isPointInsideDrum(obs.strikePoint, drum, this.config.hysteresisOffset);
 
         // Predictive collision calculation
@@ -106,33 +130,50 @@ export class HitDetector {
           predictedInside = getEllipticalDistance(predictedPoint, drum) <= 1.0;
         }
 
-        const effectiveInside = insideNow || predictedInside;
+        // Surface crossing detection (prevents tunneling through drum in fast strikes)
+        let crossedSurface = false;
+        if (prevPoint) {
+          const drumTopY = drum.y - drum.radiusY;
+          const drumBottomY = drum.y + drum.radiusY;
+          const wasAbove = prevPoint.y < drumTopY + drum.radiusY * 0.4;
+          const isNowInsideOrBelow = obs.strikePoint.y >= drumTopY;
+          const withinXBounds =
+            Math.abs(obs.strikePoint.x - drum.x) <= drum.radiusX * 1.15 ||
+            Math.abs(prevPoint.x - drum.x) <= drum.radiusX * 1.15;
+          const movedDown = obs.strikePoint.y > prevPoint.y + 0.005;
+
+          if (wasAbove && isNowInsideOrBelow && withinXBounds && movedDown && obs.strikePoint.y <= drumBottomY + 0.1) {
+            crossedSurface = true;
+          }
+        }
+
+        const effectiveInside = insideNow || predictedInside || crossedSurface;
 
         // Kinematics checks:
-        // dy > 0 is downward
+        // dy > 0 is downward in screen coordinates
         const downwardVel = motion.velocity.y;
-        const horizontalVel = Math.abs(motion.velocity.x);
-
-        // Effective threshold scaled by user sensitivity
         const requiredDownwardVel = this.config.minDownwardVelocity / this.config.velocitySensitivity;
 
+        // Moving downward check: must exceed required velocity threshold
         const isMovingDownward = downwardVel >= requiredDownwardVel;
-        const isNotPredominantlyHorizontal = downwardVel > horizontalVel * 0.45;
-        const isApproaching =
-          dist <= 1.0 + this.config.approachThreshold && downwardVel > 0.2;
 
+        // Cooldown checks
         const lastDrumHit = this.drumLastHitTimes.get(drum.id) || 0;
         const lastHandHit = this.handLastHitTimes.get(obs.id) || 0;
         const isCooledDown =
           timestamp - lastDrumHit >= this.config.rearmCooldownMs &&
-          timestamp - lastHandHit >= 45; // Minimum interval between any hits by same hand
+          timestamp - lastHandHit >= 40;
+
+        const isApproaching =
+          minCandidateDist <= 1.0 + this.config.approachThreshold && downwardVel > 0.1;
 
         let nextState = currentState;
 
         const triggerHit = () => {
+          // Dynamic velocity mapped to 0.2 .. 1.0
           const intensity = Math.min(
             1.0,
-            Math.max(0.2, (downwardVel - requiredDownwardVel * 0.5) / 1.5)
+            Math.max(0.25, Math.abs(downwardVel) / 1.6)
           );
 
           hitEvents.push({
@@ -153,7 +194,7 @@ export class HitDetector {
 
         switch (currentState) {
           case 'IDLE':
-            if (effectiveInside && isMovingDownward && isNotPredominantlyHorizontal && isCooledDown) {
+            if (effectiveInside && isMovingDownward && isCooledDown) {
               triggerHit();
             } else if (isApproaching) {
               nextState = 'APPROACHING';
@@ -161,7 +202,7 @@ export class HitDetector {
             break;
 
           case 'APPROACHING':
-            if (effectiveInside && isMovingDownward && isNotPredominantlyHorizontal && isCooledDown) {
+            if (effectiveInside && isMovingDownward && isCooledDown) {
               triggerHit();
             } else if (!isApproaching && !effectiveInside) {
               nextState = 'IDLE';
@@ -169,13 +210,16 @@ export class HitDetector {
             break;
 
           case 'HIT':
-            // Immediate transition into rearming if hit was already emitted
             nextState = 'REARMING';
             break;
 
           case 'REARMING':
-            // Only re-arm once hand exits the hysteresis boundary OR is rebounding upward
-            if (!insideHysteresis || downwardVel < -0.1) {
+            // Re-arm when hand moves upward, leaves the drum surface, or lifts above drum center
+            const movingUp = downwardVel < -0.05 || (prevPoint && obs.strikePoint.y < prevPoint.y - 0.005);
+            const outsideSurface = !insideHysteresis;
+            const liftedAboveCenter = obs.strikePoint.y < drum.y;
+
+            if (outsideSurface || movingUp || liftedAboveCenter) {
               if (timestamp - lastDrumHit >= this.config.rearmCooldownMs) {
                 nextState = isApproaching ? 'APPROACHING' : 'IDLE';
               }
@@ -185,6 +229,8 @@ export class HitDetector {
 
         handStates.set(drum.id, nextState);
       }
+
+      this.previousStrikePoints.set(obs.id, { ...obs.strikePoint });
     }
 
     return hitEvents;

@@ -18,7 +18,7 @@ export const Metronome: React.FC<MetronomeProps> = ({ onClose }) => {
       timerRef.current = window.setInterval(() => {
         setBeat((prev) => {
           const next = (prev + 1) % 4;
-          // Play metronome click on beat 0 with closed hi-hat or rim
+          // Play metronome click on beat 0 with accented hi-hat
           if (next === 0) {
             audioEngine.trigger('hihat_closed', 0.95);
           } else {
@@ -47,7 +47,7 @@ export const Metronome: React.FC<MetronomeProps> = ({ onClose }) => {
       <div className="metronome-header">
         <div className="metronome-title">
           <Volume2 size={16} className="text-vermilion" />
-          <span>拍子 Metronome</span>
+          <span>Metronome</span>
         </div>
         <button onClick={onClose} className="close-btn">
           &times;

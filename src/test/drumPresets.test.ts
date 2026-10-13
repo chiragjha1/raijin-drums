@@ -17,7 +17,7 @@ describe('Drum Presets & Geometry', () => {
       expect(drum.y).toBeLessThan(1);
       expect(drum.radiusX).toBeGreaterThan(0);
       expect(drum.radiusY).toBeGreaterThan(0);
-      expect(drum.japaneseName).toBeTruthy();
+      expect(drum.label).toBeTruthy();
     }
   });
 

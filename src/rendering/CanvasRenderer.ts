@@ -1,3 +1,4 @@
+// RAIJIN Canvas 2D High-Performance Visualizer (English-Only Clean Modern Aesthetic)
 import { DrumPad, HandObservation, HitEvent } from '../types';
 
 export interface VisualImpact {
@@ -32,7 +33,7 @@ export class CanvasRenderer {
       x: hit.strikePoint.x,
       y: hit.strikePoint.y,
       radius: 12,
-      maxRadius: 75 + hit.velocity * 45,
+      maxRadius: 70 + hit.velocity * 45,
       color: hit.drumId === 'snare' ? '#d32f2f' : '#2563eb',
       opacity: 0.85,
       startTime: hit.timestamp
@@ -89,7 +90,7 @@ export class CanvasRenderer {
 
     const hitInfo = this.activeDrumHits.get(drum.id);
     const timeSinceHit = hitInfo ? currentTime - hitInfo.time : 9999;
-    const hitDecay = Math.max(0, 1 - timeSinceHit / 200); // 200ms decay
+    const hitDecay = Math.max(0, 1 - timeSinceHit / 220); // 220ms decay
 
     const scale = 1.0 + hitDecay * 0.08 * (hitInfo ? hitInfo.velocity : 1);
     const currentRx = rx * scale;
@@ -98,8 +99,8 @@ export class CanvasRenderer {
     ctx.save();
 
     // Subtle drop shadow for clean modern depth
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.08)';
-    ctx.shadowBlur = hitDecay > 0 ? 16 : 8;
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.07)';
+    ctx.shadowBlur = hitDecay > 0 ? 18 : 8;
     ctx.shadowOffsetY = 4;
 
     // Drum Base Ellipse
@@ -108,23 +109,23 @@ export class CanvasRenderer {
 
     // Background fill: clean porcelain white, flash on hit
     if (hitDecay > 0) {
-      ctx.fillStyle = `rgba(255, 248, 245, ${0.95 + hitDecay * 0.05})`;
+      ctx.fillStyle = `rgba(255, 245, 245, ${0.95 + hitDecay * 0.05})`;
     } else {
-      ctx.fillStyle = drum.isCymbal ? 'rgba(254, 252, 232, 0.92)' : 'rgba(255, 255, 255, 0.92)';
+      ctx.fillStyle = drum.isCymbal ? 'rgba(254, 252, 235, 0.92)' : 'rgba(255, 255, 255, 0.92)';
     }
     ctx.fill();
 
     // Reset shadow for borders
     ctx.shadowColor = 'transparent';
 
-    // Outer Rim Stroke: Ink / Vermilion Accent
+    // Outer Rim Stroke
     ctx.beginPath();
     ctx.ellipse(cx, cy, currentRx, currentRy, 0, 0, Math.PI * 2);
     ctx.lineWidth = hitDecay > 0 ? 3.5 : 2.0;
     ctx.strokeStyle = hitDecay > 0 ? drum.accentColor : '#94a3b8';
     ctx.stroke();
 
-    // Inner Decorative Ring (Japanese Minimalist Taiko Ring)
+    // Inner Concentric Ring
     ctx.beginPath();
     ctx.ellipse(cx, cy, currentRx * 0.86, currentRy * 0.86, 0, 0, Math.PI * 2);
     ctx.lineWidth = 1;
@@ -144,17 +145,17 @@ export class CanvasRenderer {
       ctx.globalAlpha = 1.0;
     }
 
-    // Japanese Kanji Character (Taiko Label)
+    // Clean English Primary Label
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.font = '600 15px "Noto Serif JP", serif';
-    ctx.fillStyle = hitDecay > 0 ? drum.accentColor : '#334155';
-    ctx.fillText(drum.japaneseName, cx, cy - 8);
+    ctx.font = '700 14px "Inter", -apple-system, sans-serif';
+    ctx.fillStyle = hitDecay > 0 ? drum.accentColor : '#0f172a';
+    ctx.fillText(drum.label, cx, cy - 7);
 
-    // English Name Label
-    ctx.font = '500 11px "Inter", sans-serif';
-    ctx.fillStyle = '#64748b';
-    ctx.fillText(drum.name, cx, cy + 12);
+    // English Subtitle
+    ctx.font = '500 10.5px "Inter", -apple-system, sans-serif';
+    ctx.fillStyle = hitDecay > 0 ? drum.accentColor : '#64748b';
+    ctx.fillText(drum.name.toUpperCase(), cx, cy + 11);
 
     ctx.restore();
   }
@@ -231,7 +232,7 @@ export class CanvasRenderer {
       ctx.stroke();
     }
 
-    // Joints: delicate white nodes with ink outline
+    // Joints: white nodes with ink outline
     for (let i = 0; i < raw.length; i++) {
       const p = raw[i];
       const px = p.x * width;
@@ -252,23 +253,23 @@ export class CanvasRenderer {
     const sy = obs.strikePoint.y * height;
 
     ctx.beginPath();
-    ctx.arc(sx, sy, 7, 0, Math.PI * 2);
+    ctx.arc(sx, sy, 8, 0, Math.PI * 2);
     ctx.lineWidth = 2.0;
     ctx.strokeStyle = '#d32f2f';
     ctx.stroke();
 
     // Center dot
     ctx.beginPath();
-    ctx.arc(sx, sy, 2.5, 0, Math.PI * 2);
+    ctx.arc(sx, sy, 3, 0, Math.PI * 2);
     ctx.fillStyle = '#d32f2f';
     ctx.fill();
 
-    // Hand identity label badge
-    ctx.font = '600 10px "JetBrains Mono", monospace';
+    // Hand label badge (English)
+    ctx.font = '600 11px "JetBrains Mono", monospace';
     ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
     const wrist = obs.landmarks.wrist;
     ctx.fillText(
-      `${obs.handedness} (${Math.round(obs.confidence * 100)}%)`,
+      `${obs.handedness.toUpperCase()} (${Math.round(obs.confidence * 100)}%)`,
       wrist.x * width,
       wrist.y * height + 18
     );
@@ -282,7 +283,7 @@ export class CanvasRenderer {
     height: number
   ): void {
     ctx.save();
-    ctx.strokeStyle = 'rgba(211, 47, 47, 0.25)';
+    ctx.strokeStyle = 'rgba(211, 47, 47, 0.3)';
     ctx.lineWidth = 1;
     ctx.setLineDash([6, 6]);
 
@@ -301,9 +302,9 @@ export class CanvasRenderer {
     ctx.stroke();
 
     ctx.setLineDash([]);
-    ctx.font = '500 12px "Inter", sans-serif';
-    ctx.fillStyle = 'rgba(211, 47, 47, 0.7)';
-    ctx.fillText('Optimal Strike Zone (35% - 90%)', 24, height * 0.38);
+    ctx.font = '600 12px "Inter", sans-serif';
+    ctx.fillStyle = 'rgba(211, 47, 47, 0.85)';
+    ctx.fillText('OPTIMAL STRIKE ZONE (35% – 90%)', 24, height * 0.38);
 
     ctx.restore();
   }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Eye, SlidersHorizontal } from 'lucide-react';
+import { Sparkles, Eye, SlidersHorizontal, Volume2 } from 'lucide-react';
 
 interface ControlsProps {
   layout: 'standard' | 'mirrored' | 'compact';
@@ -31,7 +31,6 @@ export const Controls: React.FC<ControlsProps> = ({
       {/* Layout Presets */}
       <div className="control-group">
         <label className="control-label">
-          <span className="kanji-sub">配置</span>
           <span>Kit Layout</span>
         </label>
         <div className="btn-toggle-group">
@@ -39,19 +38,19 @@ export const Controls: React.FC<ControlsProps> = ({
             className={`toggle-option ${layout === 'standard' ? 'selected' : ''}`}
             onClick={() => onChangeLayout('standard')}
           >
-            標準 Standard
+            Standard
           </button>
           <button
             className={`toggle-option ${layout === 'mirrored' ? 'selected' : ''}`}
             onClick={() => onChangeLayout('mirrored')}
           >
-            反転 Left-Handed
+            Left-Handed
           </button>
           <button
             className={`toggle-option ${layout === 'compact' ? 'selected' : ''}`}
             onClick={() => onChangeLayout('compact')}
           >
-            凝縮 Compact
+            Compact
           </button>
         </div>
       </div>
@@ -61,7 +60,6 @@ export const Controls: React.FC<ControlsProps> = ({
         <div className="slider-label-row">
           <label className="control-label">
             <SlidersHorizontal size={13} />
-            <span className="kanji-sub">感度</span>
             <span>Sensitivity</span>
           </label>
           <span className="slider-value">{Math.round(sensitivity * 100)}%</span>
@@ -69,11 +67,12 @@ export const Controls: React.FC<ControlsProps> = ({
         <input
           type="range"
           min="0.5"
-          max="2.0"
+          max="2.5"
           step="0.05"
           value={sensitivity}
           onChange={(e) => onChangeSensitivity(parseFloat(e.target.value))}
           className="raijin-slider"
+          title="Adjust hit detection sensitivity (higher = easier to trigger)"
         />
       </div>
 
@@ -81,7 +80,7 @@ export const Controls: React.FC<ControlsProps> = ({
       <div className="control-group">
         <div className="slider-label-row">
           <label className="control-label">
-            <span className="kanji-sub">音量</span>
+            <Volume2 size={13} />
             <span>Master Volume</span>
           </label>
           <span className="slider-value">{Math.round(masterVolume * 100)}%</span>
@@ -101,7 +100,6 @@ export const Controls: React.FC<ControlsProps> = ({
       <div className="control-group">
         <label className="control-label">
           <Eye size={13} />
-          <span className="kanji-sub">鏡像</span>
           <span>Mirror View</span>
         </label>
         <button
@@ -117,7 +115,6 @@ export const Controls: React.FC<ControlsProps> = ({
       <div className="control-group">
         <label className="control-label" title="Experimental Trajectory Lookahead">
           <Sparkles size={13} />
-          <span className="kanji-sub">予測</span>
           <span>Predictive Mode</span>
         </label>
         <button

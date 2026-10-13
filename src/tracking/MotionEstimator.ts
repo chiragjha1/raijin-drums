@@ -1,4 +1,4 @@
-// RAIJIN Motion Estimator with Timestamp-Aware Velocity and Filtering
+// RAIJIN Motion Estimator with High-Responsiveness Velocity Calculation
 import { Point2D, MotionState } from '../types';
 
 export interface PositionSample {
@@ -9,15 +9,15 @@ export interface PositionSample {
 export class MotionEstimator {
   private history: PositionSample[] = [];
   private readonly maxHistory = 8;
-  private readonly maxTrackingGapMs = 250; // Reset history if gap is longer than 250ms
+  private readonly maxTrackingGapMs = 300; // Reset history if gap is longer than 300ms
 
-  // Alpha filter coefficient: balance between latency and landmark jitter
-  // 0.7 gives responsive tracking while smoothing out single-frame subpixel noise
-  private readonly alpha = 0.72;
+  // Position smoothing factor (0.80 provides high responsiveness with minimal lag)
+  private readonly alpha = 0.80;
 
   private smoothedPoint: Point2D | null = null;
   private currentVelocity: Point2D = { x: 0, y: 0 };
   private previousVelocity: Point2D = { x: 0, y: 0 };
+  private instantaneousVelocity: Point2D = { x: 0, y: 0 };
   private currentAcceleration: Point2D = { x: 0, y: 0 };
   private lastUpdateTimestamp = 0;
 
@@ -26,6 +26,7 @@ export class MotionEstimator {
     this.smoothedPoint = null;
     this.currentVelocity = { x: 0, y: 0 };
     this.previousVelocity = { x: 0, y: 0 };
+    this.instantaneousVelocity = { x: 0, y: 0 };
     this.currentAcceleration = { x: 0, y: 0 };
     this.lastUpdateTimestamp = 0;
   }
@@ -71,13 +72,14 @@ export class MotionEstimator {
     // Calculate velocity using timestamps
     const dtSeconds = elapsedMs / 1000.0;
     if (dtSeconds > 0.001) {
-      // Calculate instantaneous raw velocity
       const prevSample = this.history[this.history.length - 2];
       const rawVx = (point.x - prevSample.point.x) / dtSeconds;
       const rawVy = (point.y - prevSample.point.y) / dtSeconds;
 
-      // Filter velocity to prevent camera jitter from triggering false downward strikes
-      const vAlpha = 0.65;
+      this.instantaneousVelocity = { x: rawVx, y: rawVy };
+
+      // Highly responsive filtering (0.80 raw, 0.20 previous) ensures instant snappy response
+      const vAlpha = 0.80;
       const vx = vAlpha * rawVx + (1 - vAlpha) * this.currentVelocity.x;
       const vy = vAlpha * rawVy + (1 - vAlpha) * this.currentVelocity.y;
 
@@ -109,12 +111,14 @@ export class MotionEstimator {
   public getKinematics(): {
     velocity: Point2D;
     previousVelocity: Point2D;
+    instantaneousVelocity: Point2D;
     acceleration: Point2D;
     smoothedPoint: Point2D | null;
   } {
     return {
       velocity: { ...this.currentVelocity },
       previousVelocity: { ...this.previousVelocity },
+      instantaneousVelocity: { ...this.instantaneousVelocity },
       acceleration: { ...this.currentAcceleration },
       smoothedPoint: this.smoothedPoint ? { ...this.smoothedPoint } : null
     };
