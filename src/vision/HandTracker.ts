@@ -28,10 +28,13 @@ export class HandTracker {
     this.isInitializing = true;
 
     try {
-      // 1. Resolve WASM assets: try local /wasm, fallback to CDN
+      const baseUrl = import.meta.env.BASE_URL || './';
+      const cleanBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+
+      // 1. Resolve WASM assets: try local wasm, fallback to CDN
       let vision;
       try {
-        vision = await FilesetResolver.forVisionTasks('/wasm');
+        vision = await FilesetResolver.forVisionTasks(`${cleanBase}wasm`);
       } catch (wasmErr) {
         console.warn('Local WASM loading failed, falling back to CDN...', wasmErr);
         vision = await FilesetResolver.forVisionTasks(
@@ -41,6 +44,7 @@ export class HandTracker {
 
       // 2. Initialize HandLandmarker: try local model asset, fallback to CDN
       const modelCandidates = [
+        `${cleanBase}models/hand_landmarker.task`,
         '/models/hand_landmarker.task',
         'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'
       ];
