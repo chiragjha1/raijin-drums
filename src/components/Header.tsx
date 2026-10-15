@@ -1,6 +1,7 @@
 import React from 'react';
 import { CameraStatus } from '../camera/CameraManager';
 import { Volume2, VolumeX, Camera, CameraOff, Activity, Sliders, Music } from 'lucide-react';
+import raijinLogo from '../assets/raijin-logo.png';
 
 interface HeaderProps {
   cameraStatus: CameraStatus;
@@ -38,7 +39,7 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Brand & Logo */}
       <div className="brand-section">
         <div className="logo-wrapper">
-          <img src="/raijin-logo.png" alt="RAIJIN Logo" className="brand-logo" />
+          <img src={raijinLogo} alt="RAIJIN Logo" className="brand-logo" />
         </div>
         <div className="brand-subtext">
           <span className="brand-tagline">Virtual Drum Instrument</span>

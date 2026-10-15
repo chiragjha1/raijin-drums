@@ -2,6 +2,10 @@
 import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
 import { HandObservation, HandLandmarks, Point3D, Point2D, Handedness } from '../types';
 
+const CDN_WASM_PATH = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm';
+const CDN_MODEL_PATH =
+  'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
+
 export class HandTracker {
   private handLandmarker: HandLandmarker | null = null;
   private isInitializing = false;
@@ -21,33 +25,38 @@ export class HandTracker {
   }
 
   /**
-   * Initializes MediaPipe Hand Landmarker with local assets and CDN fallback
+   * Initializes MediaPipe Hand Landmarker with CDN and local fallbacks
    */
   public async initialize(): Promise<void> {
     if (this.isReady || this.isInitializing) return;
     this.isInitializing = true;
 
     try {
-      const baseUrl = import.meta.env.BASE_URL || './';
-      const cleanBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
-
-      // 1. Resolve WASM assets: try local wasm, fallback to CDN
-      let vision;
+      // Build safe absolute local path using current window location
+      let localWasmUrl = '';
+      let localModelUrl = '';
       try {
-        vision = await FilesetResolver.forVisionTasks(`${cleanBase}wasm`);
-      } catch (wasmErr) {
-        console.warn('Local WASM loading failed, falling back to CDN...', wasmErr);
-        vision = await FilesetResolver.forVisionTasks(
-          'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
-        );
+        const baseUrl = window.location.href.split('?')[0].split('#')[0];
+        const dirUrl = baseUrl.endsWith('/') ? baseUrl : baseUrl.substring(0, baseUrl.lastIndexOf('/') + 1);
+        localWasmUrl = new URL('wasm', dirUrl).href;
+        localModelUrl = new URL('models/hand_landmarker.task', dirUrl).href;
+      } catch {
+        // Fallback to relative
+        localWasmUrl = './wasm';
+        localModelUrl = './models/hand_landmarker.task';
       }
 
-      // 2. Initialize HandLandmarker: try local model asset, fallback to CDN
-      const modelCandidates = [
-        `${cleanBase}models/hand_landmarker.task`,
-        '/models/hand_landmarker.task',
-        'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'
-      ];
+      // 1. Resolve WASM assets: prioritize CDN on web for zero-404 reliability, fallback to local
+      let vision;
+      try {
+        vision = await FilesetResolver.forVisionTasks(CDN_WASM_PATH);
+      } catch (cdnErr) {
+        console.warn('CDN WASM loading failed, falling back to local assets...', cdnErr);
+        vision = await FilesetResolver.forVisionTasks(localWasmUrl);
+      }
+
+      // 2. Initialize HandLandmarker: prioritize CDN model asset, fallback to local
+      const modelCandidates = [CDN_MODEL_PATH, localModelUrl];
 
       let landmarker: HandLandmarker | null = null;
       let lastError: Error | null = null;
@@ -163,9 +172,10 @@ export class HandTracker {
       };
 
       // Strike point: leading fingertip (index or middle, whichever extends furthest down)
-      const leadTip = handLandmarks.indexTip.y >= handLandmarks.middleTip.y
-        ? handLandmarks.indexTip
-        : handLandmarks.middleTip;
+      const leadTip =
+        handLandmarks.indexTip.y >= handLandmarks.middleTip.y
+          ? handLandmarks.indexTip
+          : handLandmarks.middleTip;
 
       const strikePoint: Point2D = {
         x: leadTip.x,
@@ -173,8 +183,6 @@ export class HandTracker {
       };
 
       // Hand Identity Continuity:
-      // In mirrored mode, visual left is screen-left (x < 0.5)
-      // We assign persistent IDs ('hand-0', 'hand-1') based on spatial proximity to previous frames
       let persistentId = `hand_${i}`;
       const currentWrist: Point2D = { x: handLandmarks.wrist.x, y: handLandmarks.wrist.y };
 
