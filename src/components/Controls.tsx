@@ -2,8 +2,8 @@ import React from 'react';
 import { Sparkles, Eye, SlidersHorizontal, Volume2 } from 'lucide-react';
 
 interface ControlsProps {
-  layout: 'standard' | 'mirrored' | 'compact';
-  onChangeLayout: (layout: 'standard' | 'mirrored' | 'compact') => void;
+  layout: 'standard' | 'mirrored' | 'compact' | 'tabletop';
+  onChangeLayout: (layout: 'standard' | 'mirrored' | 'compact' | 'tabletop') => void;
   sensitivity: number;
   onChangeSensitivity: (val: number) => void;
   masterVolume: number;
@@ -39,6 +39,13 @@ export const Controls: React.FC<ControlsProps> = ({
             onClick={() => onChangeLayout('standard')}
           >
             Standard
+          </button>
+          <button
+            className={`toggle-option ${layout === 'tabletop' ? 'selected' : ''}`}
+            onClick={() => onChangeLayout('tabletop')}
+            title="Split Left/Right wings for horizontal tabletop phone play"
+          >
+            Tabletop
           </button>
           <button
             className={`toggle-option ${layout === 'mirrored' ? 'selected' : ''}`}

@@ -3,6 +3,7 @@ import {
   STANDARD_KIT,
   MIRRORED_KIT,
   COMPACT_KIT,
+  TABLETOP_KIT,
   getEllipticalDistance,
   isPointInsideDrum
 } from '../drums/drumPresets';
@@ -49,5 +50,26 @@ describe('Drum Presets & Geometry', () => {
     const edgePoint = { x: snare.x + snare.radiusX, y: snare.y };
     expect(getEllipticalDistance(edgePoint, snare)).toBeCloseTo(1.0);
     expect(isPointInsideDrum(edgePoint, snare)).toBe(true);
+  });
+
+  it('tabletop kit organizes pads into distinct left and right wings', () => {
+    // Left wing pads should have x < 0.45
+    const leftWingPads = ['snare', 'hihat_closed', 'hihat_open', 'crash'];
+    // Right wing pads should have x > 0.55
+    const rightWingPads = ['tom_high', 'tom_low', 'ride'];
+
+    for (const id of leftWingPads) {
+      const drum = TABLETOP_KIT.find((d) => d.id === id)!;
+      expect(drum.x).toBeLessThan(0.45);
+    }
+
+    for (const id of rightWingPads) {
+      const drum = TABLETOP_KIT.find((d) => d.id === id)!;
+      expect(drum.x).toBeGreaterThan(0.55);
+    }
+
+    // Kick should be centered
+    const kick = TABLETOP_KIT.find((d) => d.id === 'kick')!;
+    expect(kick.x).toBeCloseTo(0.50);
   });
 });

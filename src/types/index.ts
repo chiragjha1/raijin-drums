@@ -114,5 +114,5 @@ export interface CalibrationSettings {
   mirrored: boolean;
   cameraResolution: { width: number; height: number };
   activeDrumCount: number;
-  kitLayout: 'standard' | 'mirrored' | 'compact';
+  kitLayout: 'standard' | 'mirrored' | 'compact' | 'tabletop';
 }

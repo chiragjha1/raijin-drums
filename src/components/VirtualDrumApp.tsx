@@ -10,9 +10,9 @@ import { audioEngine } from '../audio/AudioEngine';
 import { HitDetector } from '../engine/HitDetector';
 import { canvasRenderer } from '../rendering/CanvasRenderer';
 import { performanceTracker } from '../diagnostics/PerformanceTracker';
-import { STANDARD_KIT, MIRRORED_KIT, COMPACT_KIT, isPointInsideDrum } from '../drums/drumPresets';
+import { STANDARD_KIT, MIRRORED_KIT, COMPACT_KIT, TABLETOP_KIT, isPointInsideDrum } from '../drums/drumPresets';
 import { DrumPad, PerformanceMetrics } from '../types';
-import { AlertCircle, Camera, PlayCircle, Disc3 } from 'lucide-react';
+import { AlertCircle, Camera, PlayCircle, Disc3, RotateCcw } from 'lucide-react';
 
 export const VirtualDrumApp: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -25,9 +25,9 @@ export const VirtualDrumApp: React.FC = () => {
   const [cameraError, setCameraError] = useState<string>('');
   const [isAudioReady, setIsAudioReady] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(false);
-  const [layout, setLayout] = useState<'standard' | 'mirrored' | 'compact'>('standard');
+  const [layout, setLayout] = useState<'standard' | 'mirrored' | 'compact' | 'tabletop'>('standard');
   const [singleDrumMode, setSingleDrumMode] = useState<boolean>(false);
-  const [sensitivity, setSensitivity] = useState<number>(1.2); // Default to generous 1.2 sensitivity
+  const [sensitivity, setSensitivity] = useState<number>(1.2);
   const [masterVolume, setMasterVolume] = useState<number>(0.9);
   const [predictiveMode, setPredictiveMode] = useState<boolean>(false);
   const [isMirroredView, setIsMirroredView] = useState<boolean>(true);
@@ -35,6 +35,10 @@ export const VirtualDrumApp: React.FC = () => {
   const [calibrationMode, setCalibrationMode] = useState<boolean>(false);
   const [showMetronome, setShowMetronome] = useState<boolean>(false);
   const [activeHandsCount, setActiveHandsCount] = useState<number>(0);
+
+  // Mobile Orientation States
+  const [isMobilePortrait, setIsMobilePortrait] = useState<boolean>(false);
+  const [isMobileLandscape, setIsMobileLandscape] = useState<boolean>(false);
 
   // Diagnostics metrics state for UI display
   const [metrics, setMetrics] = useState<PerformanceMetrics>({
@@ -60,10 +64,56 @@ export const VirtualDrumApp: React.FC = () => {
     predictiveMode: false
   }));
 
+  // Detect mobile device and rotation changes
+  useEffect(() => {
+    const handleOrientation = () => {
+      const isNarrow = window.innerWidth <= 950;
+      const isLandscape = window.innerWidth > window.innerHeight;
+      const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+      if ((isNarrow || isTouch) && !isLandscape) {
+        setIsMobilePortrait(true);
+        setIsMobileLandscape(false);
+      } else if (isLandscape && (isNarrow || isTouch)) {
+        setIsMobilePortrait(false);
+        setIsMobileLandscape(true);
+        // Automatically adapt drum layout to Tabletop Split (left & right wings)
+        setLayout((prev) => (prev === 'standard' ? 'tabletop' : prev));
+      } else {
+        setIsMobilePortrait(false);
+        setIsMobileLandscape(false);
+      }
+    };
+
+    handleOrientation();
+    window.addEventListener('resize', handleOrientation);
+    window.addEventListener('orientationchange', handleOrientation);
+    return () => {
+      window.removeEventListener('resize', handleOrientation);
+      window.removeEventListener('orientationchange', handleOrientation);
+    };
+  }, []);
+
+  // Request fullscreen landscape on mobile
+  const requestLandscape = async () => {
+    try {
+      if (document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      }
+      const orientation = screen.orientation as unknown as { lock?: (mode: string) => Promise<void> };
+      if (orientation && orientation.lock) {
+        await orientation.lock('landscape');
+      }
+    } catch {
+      // Fallback if orientation lock not granted
+    }
+  };
+
   // Drums according to layout & single drum mode
   const getActiveDrums = useCallback((): DrumPad[] => {
     let kit = STANDARD_KIT;
-    if (layout === 'mirrored') kit = MIRRORED_KIT;
+    if (layout === 'tabletop') kit = TABLETOP_KIT;
+    else if (layout === 'mirrored') kit = MIRRORED_KIT;
     else if (layout === 'compact') kit = COMPACT_KIT;
 
     if (singleDrumMode) {
@@ -262,7 +312,26 @@ export const VirtualDrumApp: React.FC = () => {
   }, []);
 
   return (
-    <div className="raijin-app-container" onClick={ensureAudioInitialized}>
+    <div className={`raijin-app-container ${isMobileLandscape ? 'mobile-landscape-active' : ''}`} onClick={ensureAudioInitialized}>
+      {/* Mobile Portrait Orientation Prompt */}
+      {isMobilePortrait && (
+        <div className="portrait-rotation-banner">
+          <div className="rotation-hint-content">
+            <RotateCcw className="rotate-icon-spin" size={18} />
+            <div className="rotate-hint-text">
+              <strong>Rotate Phone Horizontally</strong>
+              <span>Place your phone flat or tilted on a table to play with Left & Right hand zones</span>
+            </div>
+            <button className="rotate-fullscreen-btn" onClick={requestLandscape}>
+              Flip to Landscape
+            </button>
+            <button className="rotate-dismiss-btn" onClick={() => setIsMobilePortrait(false)}>
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Top Header */}
       <Header
         cameraStatus={cameraStatus}
@@ -284,7 +353,7 @@ export const VirtualDrumApp: React.FC = () => {
       <main className="stage-container">
         <div
           ref={viewportRef}
-          className="viewport-wrapper"
+          className={`viewport-wrapper ${isMobileLandscape ? 'landscape-viewport' : ''}`}
           onClick={handleStageClick}
         >
           {/* Webcam Video Feed */}
@@ -307,8 +376,8 @@ export const VirtualDrumApp: React.FC = () => {
                 </div>
                 <h2>RAIJIN VIRTUAL DRUM INSTRUMENT</h2>
                 <p>
-                  Play virtual drums with your webcam using browser Web Audio DSP and
-                  real-time hand motion tracking.
+                  Place your phone horizontally on a table. Play with your left hand on the left wing
+                  and right hand on the right wing.
                 </p>
 
                 {cameraError ? (
@@ -346,7 +415,7 @@ export const VirtualDrumApp: React.FC = () => {
               }}
             >
               <PlayCircle size={15} />
-              <span>Click anywhere to activate Web Audio</span>
+              <span>Tap anywhere to activate audio</span>
             </button>
           )}
 

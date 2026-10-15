@@ -122,6 +122,116 @@ export const COMPACT_KIT: DrumPad[] = STANDARD_KIT.map((drum) => ({
   radiusY: drum.radiusY * 0.95
 }));
 
+export const TABLETOP_KIT: DrumPad[] = [
+  // Left Hand Zone
+  {
+    id: 'crash',
+    name: 'Crash Cymbal',
+    label: 'CRASH',
+    x: 0.14,
+    y: 0.28,
+    radiusX: 0.10,
+    radiusY: 0.14,
+    color: '#ffffff',
+    accentColor: '#eab308',
+    volume: 0.9,
+    isCymbal: true
+  },
+  {
+    id: 'hihat_open',
+    name: 'Open Hi-Hat',
+    label: 'OPEN HH',
+    x: 0.32,
+    y: 0.28,
+    radiusX: 0.09,
+    radiusY: 0.13,
+    color: '#ffffff',
+    accentColor: '#d4af37',
+    volume: 0.85,
+    isCymbal: true
+  },
+  {
+    id: 'hihat_closed',
+    name: 'Closed Hi-Hat',
+    label: 'CLOSED HH',
+    x: 0.14,
+    y: 0.70,
+    radiusX: 0.10,
+    radiusY: 0.14,
+    color: '#ffffff',
+    accentColor: '#c29d38',
+    volume: 0.85,
+    isCymbal: true
+  },
+  {
+    id: 'snare',
+    name: 'Snare Drum',
+    label: 'SNARE',
+    x: 0.32,
+    y: 0.70,
+    radiusX: 0.11,
+    radiusY: 0.16,
+    color: '#ffffff',
+    accentColor: '#d32f2f',
+    volume: 0.95,
+    isCymbal: false
+  },
+  // Center
+  {
+    id: 'kick',
+    name: 'Bass Drum',
+    label: 'KICK',
+    x: 0.50,
+    y: 0.80,
+    radiusX: 0.12,
+    radiusY: 0.14,
+    color: '#ffffff',
+    accentColor: '#1e293b',
+    volume: 1.0,
+    isCymbal: false
+  },
+  // Right Hand Zone
+  {
+    id: 'tom_high',
+    name: 'High Tom',
+    label: 'HIGH TOM',
+    x: 0.68,
+    y: 0.28,
+    radiusX: 0.09,
+    radiusY: 0.13,
+    color: '#ffffff',
+    accentColor: '#0284c7',
+    volume: 0.85,
+    isCymbal: false
+  },
+  {
+    id: 'ride',
+    name: 'Ride Cymbal',
+    label: 'RIDE',
+    x: 0.86,
+    y: 0.28,
+    radiusX: 0.10,
+    radiusY: 0.14,
+    color: '#ffffff',
+    accentColor: '#ca8a04',
+    volume: 0.9,
+    isCymbal: true
+  },
+  {
+    id: 'tom_low',
+    name: 'Low Tom',
+    label: 'LOW TOM',
+    x: 0.76,
+    y: 0.70,
+    radiusX: 0.12,
+    radiusY: 0.16,
+    color: '#ffffff',
+    accentColor: '#4f46e5',
+    volume: 0.9,
+    isCymbal: false
+  }
+];
+
 /**
  * Calculates normalized elliptical distance from point to drum center.
  * If <= 1.0, the point is inside the drum surface.
